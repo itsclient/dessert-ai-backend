@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
-app.use(express.static(path.join(__dirname, '../frontend')));
+app.use(express.static(path.join(__dirname, 'frontend')));
 
 // Helper: SQL that works on both SQLite and PostgreSQL
 function dateFunc(expr) {

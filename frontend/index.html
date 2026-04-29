@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriVision - Admin Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Login Screen -->
+        <div id="login-screen" class="screen active">
+            <!-- Food-themed Background -->
+            <div class="login-bg-animation">
+                <div class="food-shape food-1">🍰</div>
+                <div class="food-shape food-2">🍪</div>
+                <div class="food-shape food-3">🧁</div>
+                <div class="food-shape food-4">🍩</div>
+                <div class="food-shape food-5">🍮</div>
+                <div class="food-shape food-6">🎂</div>
+                <div class="food-shape food-7">🍯</div>
+                <div class="food-shape food-8">🍬</div>
+            </div>
+            
+            <div class="login-container">
+                <!-- Food-themed Card -->
+                <div class="login-card">
+                    <!-- Logo Section -->
+                    <div class="login-header">
+                        <div class="logo-wrapper">
+                            <div class="logo-icon">
+                                <i class="fas fa-birthday-cake"></i>
+                            </div>
+                            <div class="logo-badge">
+                                <i class="fas fa-cookie-bite"></i>
+                            </div>
+                        </div>
+                        <h1 class="login-title">Dessert AI</h1>
+                        <p class="login-subtitle">Sweet Intelligence Dashboard</p>
+                        <div class="version-badge">v2.0</div>
+                    </div>
+
+                    <!-- Login Form -->
+                    <form id="login-form" class="login-form">
+                        <div class="form-group">
+                            <label for="admin-email" class="form-label">
+                                <i class="fas fa-envelope"></i>
+                                Admin Email
+                            </label>
+                            <div class="input-wrapper">
+                                <input type="email" id="admin-email" class="form-input" placeholder="admin@gmail.com" value="admin@gmail.com" required>
+                                <div class="input-focus-line"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="admin-password" class="form-label">
+                                <i class="fas fa-lock"></i>
+                                Secret Recipe
+                            </label>
+                            <div class="input-wrapper">
+                                <input type="password" id="admin-password" class="form-input" placeholder="Enter your password" value="admin123" required>
+                                <button type="button" class="password-toggle" onclick="togglePassword()">
+                                    <i class="fas fa-eye" id="password-icon"></i>
+                                </button>
+                                <div class="input-focus-line"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-options">
+                            <label class="checkbox-wrapper">
+                                <input type="checkbox" id="remember-me">
+                                <span class="checkmark"></span>
+                                <span class="checkbox-label">Remember my sweet spot</span>
+                            </label>
+                            <a href="#" class="forgot-password">Forgot secret recipe?</a>
+                        </div>
+
+                        <button type="submit" class="login-btn">
+                            <span class="btn-content">
+                                <i class="fas fa-cookie-bite"></i>
+                                <span>Enter Kitchen</span>
+                            </span>
+                            <div class="btn-progress"></div>
+                        </button>
+
+                        <div id="login-error" class="error-message"></div>
+                    </form>
+
+                    <!-- Footer -->
+                    <div class="login-footer">
+                        <div class="security-info">
+                            <i class="fas fa-cookie"></i>
+                            <span>Secure kitchen with encrypted recipes</span>
+                        </div>
+                        <div class="quick-stats">
+                            <div class="stat-item">
+                                <i class="fas fa-users"></i>
+                                <span id="user-count">6</span>
+                                <small>Chefs</small>
+                            </div>
+                            <div class="stat-item">
+                                <i class="fas fa-camera"></i>
+                                <span id="scan-count">5</span>
+                                <small>Dishes</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Side decoration with food theme -->
+                <div class="login-decoration">
+                    <div class="decoration-pattern"></div>
+                    <div class="floating-food">
+                        <span class="food-emoji" style="top: 15%; left: 10%;">🍩</span>
+                        <span class="food-emoji" style="top: 35%; right: 12%;">🍰</span>
+                        <span class="food-emoji" style="bottom: 25%; left: 18%;">🍪</span>
+                        <span class="food-emoji" style="bottom: 18%; right: 22%;">🧁</span>
+                        <span class="food-emoji" style="top: 55%; left: 25%;">🍮</span>
+                        <span class="food-emoji" style="top: 70%; right: 30%;">🎂</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Screen -->
+        <div id="dashboard-screen" class="screen">
+            <nav class="sidebar">
+                <div class="sidebar-header">
+                    <div class="logo">
+                        <i class="fas fa-utensils"></i>
+                        <span>NutriVision</span>
+                    </div>
+                    <button class="theme-toggle" id="theme-toggle-btn" title="Toggle Theme">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+                <ul class="nav-menu">
+                    <li class="nav-item active" data-tab="overview">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Overview</span>
+                    </li>
+                    <li class="nav-item" data-tab="users">
+                        <i class="fas fa-users"></i>
+                        <span>Users</span>
+                    </li>
+                    <li class="nav-item" data-tab="scans">
+                        <i class="fas fa-camera"></i>
+                        <span>Scans</span>
+                    </li>
+                    <li class="nav-item" data-tab="analytics">
+                        <i class="fas fa-chart-pie"></i>
+                        <span>Analytics</span>
+                    </li>
+                    <li class="nav-item" data-tab="user-analytics">
+                        <i class="fas fa-chart-line"></i>
+                        <span>User Analytics</span>
+                    </li>
+                    <li class="nav-item" data-tab="alerts">
+                        <i class="fas fa-bell"></i>
+                        <span>Alerts</span>
+                    </li>
+                    <li class="nav-item" data-tab="mobile">
+                        <i class="fas fa-mobile-alt"></i>
+                        <span>Mobile</span>
+                    </li>
+                    <li class="nav-item" data-tab="performance">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span>Performance</span>
+                    </li>
+                    <li class="nav-item" data-tab="segments">
+                        <i class="fas fa-users-cog"></i>
+                        <span>Segments</span>
+                    </li>
+                </ul>
+                <div class="sidebar-footer">
+                    <div class="sidebar-controls">
+                        <button class="btn-control" onclick="location.reload()" title="Refresh Dashboard">
+                            <i class="fas fa-sync"></i>
+                        </button>
+                        <button class="btn-control" onclick="showExportMenu()" title="Export Data">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </div>
+                    <button id="logout-btn" class="btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+            </nav>
+
+            <main class="main-content">
+                <header class="top-bar">
+                    <h2 id="page-title">Dashboard Overview</h2>
+                    <div class="admin-info">
+                        <i class="fas fa-user-shield"></i>
+                        <span>Admin</span>
+                    </div>
+                </header>
+
+                <!-- Overview Tab -->
+                <div id="overview-tab" class="tab-content active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon users">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="total-users">0</h3>
+                                <p>Total Users</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon scans">
+                                <i class="fas fa-camera"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="total-scans">0</h3>
+                                <p>Total Scans</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon calories">
+                                <i class="fas fa-fire"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="avg-calories">0</h3>
+                                <p>Avg Calories</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon today">
+                                <i class="fas fa-calendar-day"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="scans-today">0</h3>
+                                <p>Scans Today</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="charts-row">
+                        <div class="chart-card">
+                            <h3><i class="fas fa-chart-line"></i> Daily Scan Activity</h3>
+                            <canvas id="daily-chart"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <h3><i class="fas fa-chart-pie"></i> Top Categories</h3>
+                            <canvas id="category-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Users Tab -->
+                <div id="users-tab" class="tab-content">
+                    <div class="content-header">
+                        <h3><i class="fas fa-users"></i> All Users</h3>
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="user-search" placeholder="Search users...">
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Email</th>
+                                    <th>Username</th>
+                                    <th>Name</th>
+                                    <th>Joined</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Scans Tab -->
+                <div id="scans-tab" class="tab-content">
+                    <div class="content-header">
+                        <h3><i class="fas fa-camera"></i> All Scans</h3>
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="scan-search" placeholder="Search scans...">
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>User</th>
+                                    <th>Dessert</th>
+                                    <th>Category</th>
+                                    <th>Calories</th>
+                                    <th>Protein</th>
+                                    <th>Date</th>
+                                    <th>Fav</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scans-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Analytics Tab -->
+                <div id="analytics-tab" class="tab-content">
+                    <div class="content-header">
+                        <h3><i class="fas fa-chart-pie"></i> Detailed Analytics</h3>
+                    </div>
+                    <div class="analytics-grid">
+                        <div class="chart-card full-width">
+                            <h3>Scans Over Time (Last 30 Days)</h3>
+                            <canvas id="timeline-chart"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <h3>Calorie Distribution</h3>
+                            <canvas id="calorie-chart"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <h3>User Activity</h3>
+                            <canvas id="activity-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Analytics Tab -->
+                <div id="user-analytics-tab" class="tab-content">
+                    <div class="content-header">
+                        <h3><i class="fas fa-chart-line"></i> User Analytics</h3>
+                        <button class="btn-control" onclick="window.nutrivision.loadUserAnalytics()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="analytics-grid">
+                        <div class="chart-card full-width">
+                            <h3>User Growth Over Time</h3>
+                            <canvas id="user-growth-chart"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <h3>Top Active Users</h3>
+                            <div id="user-leaderboard"></div>
+                        </div>
+                        <div class="chart-card">
+                            <h3>User Retention</h3>
+                            <div id="user-retention-stats"></div>
+                        </div>
+                        <div class="chart-card">
+                            <h3>Average Scans Per User</h3>
+                            <div id="avg-scans-stats"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alerts Tab -->
+                <div id="alerts-tab" class="tab-content">
+                    <div class="content-header">
+                        <h3><i class="fas fa-bell"></i> Real-time Alerts</h3>
+                        <button class="btn-control" onclick="refreshAlerts()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="alerts-container" id="alerts-container">
+                        <div class="no-alerts">No alerts at this time</div>
+                    </div>
+                </div>
+
+                <!-- Mobile Tab -->
+                <div id="mobile-tab" class="tab-content">
+                    <div class="content-header">
+                        <h3><i class="fas fa-mobile-alt"></i> Mobile App Integration</h3>
+                        <button class="btn-control" onclick="window.nutrivision.loadMobileStats()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon mobile">
+                                <i class="fas fa-mobile-alt"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="app-version">2.0.0</h3>
+                                <p>App Version</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon devices">
+                                <i class="fas fa-devices"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="total-devices">0</h3>
+                                <p>Total Devices</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon active">
+                                <i class="fas fa-wifi"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="active-devices">0</h3>
+                                <p>Active Devices</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon notifications">
+                                <i class="fas fa-bell"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="push-sent">0</h3>
+                                <p>Push Notifications Sent</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                
+                <!-- Performance Tab -->
+                <div id="performance-tab" class="tab-content">
+                    <div class="content-header">
+                        <h3><i class="fas fa-tachometer-alt"></i> Performance Monitoring</h3>
+                        <button class="btn-control" onclick="refreshPerformance()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="performance-stats">
+                        <div class="perf-card">
+                            <h4>System Uptime</h4>
+                            <div class="perf-value" id="uptime">0s</div>
+                        </div>
+                        <div class="perf-card">
+                            <h4>Memory Usage</h4>
+                            <div class="perf-value" id="memory-usage">0MB</div>
+                        </div>
+                        <div class="perf-card">
+                            <h4>Node.js Version</h4>
+                            <div class="perf-value" id="node-version">-</div>
+                        </div>
+                        <div class="perf-card">
+                            <h4>API Response Time</h4>
+                            <div class="perf-value" id="response-time">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Segments Tab -->
+                <div id="segments-tab" class="tab-content">
+                    <div class="content-header">
+                        <h3><i class="fas fa-users-cog"></i> User Segmentation</h3>
+                        <button class="btn-control" onclick="window.nutrivision.loadUserSegments()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="segments-grid">
+                        <div class="segment-card active">
+                            <h4><i class="fas fa-user-check"></i> Active Users</h4>
+                            <div id="active-users-list"></div>
+                        </div>
+                        <div class="segment-card inactive">
+                            <h4><i class="fas fa-user-times"></i> Inactive Users</h4>
+                            <div id="inactive-users-list"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Export Menu Modal -->
+    <div id="export-menu" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-download"></i> Export Data</h2>
+                <button class="modal-close" onclick="hideExportMenu()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="export-options">
+                    <button class="btn-export" onclick="exportUsers()">
+                        <i class="fas fa-users"></i> Export Users (CSV)
+                    </button>
+                    <button class="btn-export" onclick="exportScans()">
+                        <i class="fas fa-camera"></i> Export Scans (CSV)
+                    </button>
+                    <button class="btn-export btn-export-all" onclick="exportAllData()">
+                        <i class="fas fa-database"></i> Export All Data
+                    </button>
+                </div>
+                <div class="login-footer">
+                    <p>Dessert AI Admin Dashboard</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="module" src="js/app.js"></script>
+    <script>
+        // Password toggle functionality
+        function togglePassword() {
+            const passwordInput = document.getElementById('admin-password');
+            const passwordIcon = document.getElementById('password-icon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                passwordIcon.className = 'fas fa-eye-slash';
+            } else {
+                passwordInput.type = 'password';
+                passwordIcon.className = 'fas fa-eye';
+            }
+        }
+
+        // Enhanced login form interactions
+        document.addEventListener('DOMContentLoaded', function() {
+            const loginForm = document.getElementById('login-form');
+            const loginBtn = loginForm.querySelector('.login-btn');
+            const inputs = loginForm.querySelectorAll('.form-input');
+            
+            // Add input focus effects
+            inputs.forEach(input => {
+                input.addEventListener('focus', function() {
+                    this.parentElement.classList.add('focused');
+                });
+                
+                input.addEventListener('blur', function() {
+                    if (!this.value) {
+                        this.parentElement.classList.remove('focused');
+                    }
+                });
+                
+                // Add typing animation
+                input.addEventListener('input', function() {
+                    if (this.value) {
+                        this.parentElement.classList.add('has-value');
+                    } else {
+                        this.parentElement.classList.remove('has-value');
+                    }
+                });
+            });
+            
+            // Enhanced login button loading state
+            loginForm.addEventListener('submit', function(e) {
+                const btnContent = loginBtn.querySelector('.btn-content');
+                const btnProgress = loginBtn.querySelector('.btn-progress');
+                
+                // Show loading state
+                btnContent.style.opacity = '0.7';
+                btnProgress.style.left = '0';
+                loginBtn.disabled = true;
+                
+                // Reset after 2 seconds (in case of slow response)
+                setTimeout(() => {
+                    btnContent.style.opacity = '1';
+                    btnProgress.style.left = '-100%';
+                    loginBtn.disabled = false;
+                }, 2000);
+            });
+            
+            // Forgot password handler
+            const forgotPasswordLink = document.querySelector('.forgot-password');
+            forgotPasswordLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                alert('Password reset functionality would be implemented here. For now, use the default credentials:\n\nEmail: admin@gmail.com\nPassword: admin123');
+            });
+            
+            // Remember me functionality
+            const rememberMeCheckbox = document.getElementById('remember-me');
+            const savedEmail = localStorage.getItem('adminEmail');
+            const savedPassword = localStorage.getItem('adminPassword');
+            
+            if (savedEmail) {
+                document.getElementById('admin-email').value = savedEmail;
+                rememberMeCheckbox.checked = true;
+            }
+            
+            if (savedPassword && rememberMeCheckbox.checked) {
+                document.getElementById('admin-password').value = savedPassword;
+            }
+            
+            // Save credentials on successful login
+            window.saveCredentials = function(email, password) {
+                if (rememberMeCheckbox.checked) {
+                    localStorage.setItem('adminEmail', email);
+                    localStorage.setItem('adminPassword', password);
+                } else {
+                    localStorage.removeItem('adminEmail');
+                    localStorage.removeItem('adminPassword');
+                }
+            };
+            
+            // Add floating animation to shapes on mouse move
+            const shapes = document.querySelectorAll('.floating-shape');
+            document.addEventListener('mousemove', function(e) {
+                const x = e.clientX / window.innerWidth;
+                const y = e.clientY / window.innerHeight;
+                
+                shapes.forEach((shape, index) => {
+                    const speed = (index + 1) * 0.5;
+                    const xOffset = (x - 0.5) * 20 * speed;
+                    const yOffset = (y - 0.5) * 20 * speed;
+                    
+                    shape.style.transform = `translate(${xOffset}px, ${yOffset}px)`;
+                });
+            });
+        });
+
+        // Global functions for onclick handlers
+        function showExportMenu() {
+            document.getElementById('export-menu').style.display = 'flex';
+        }
+        
+        function hideExportMenu() {
+            document.getElementById('export-menu').style.display = 'none';
+        }
+        
+        function exportUsers() {
+            const { exportUsers } = window.nutrivision || {};
+            if (exportUsers) exportUsers();
+            hideExportMenu();
+        }
+        
+        function exportScans() {
+            const { exportScans } = window.nutrivision || {};
+            if (exportScans) exportScans();
+            hideExportMenu();
+        }
+        
+        function exportAllData() {
+            const { exportAllData } = window.nutrivision || {};
+            if (exportAllData) exportAllData();
+            hideExportMenu();
+        }
+    </script>
+</body>
+</html>
