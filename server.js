@@ -491,7 +491,16 @@ app.get('/api/admin/alerts', async (req, res) => {
   const alerts = [];
 
   try {
-    const newUserRow = await db.get(dateFunc(`SELECT COUNT(*) as count FROM users WHERE created_at >= datetime('now', '-1 hour') AND role = 'user'`));
+    // Build queries based on database type
+    const newUserQuery = db.isPostgresMode()
+      ? `SELECT COUNT(*) as count FROM users WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '1 hour' AND role = 'user'`
+      : `SELECT COUNT(*) as count FROM users WHERE created_at >= datetime('now', '-1 hour') AND role = 'user'`;
+    
+    const highCalQuery = db.isPostgresMode()
+      ? `SELECT COUNT(*) as count FROM scans WHERE calories > 800 AND scanned_at >= CURRENT_TIMESTAMP - INTERVAL '2 hours'`
+      : `SELECT COUNT(*) as count FROM scans WHERE calories > 800 AND scanned_at >= datetime('now', '-2 hours')`;
+
+    const newUserRow = await db.get(newUserQuery);
     if (newUserRow && newUserRow.count > 0) {
       alerts.push({
         type: 'new_users',
@@ -501,7 +510,7 @@ app.get('/api/admin/alerts', async (req, res) => {
       });
     }
 
-    const highCalRow = await db.get(dateFunc(`SELECT COUNT(*) as count FROM scans WHERE calories > 800 AND scanned_at >= datetime('now', '-2 hours')`));
+    const highCalRow = await db.get(highCalQuery);
     if (highCalRow && highCalRow.count > 0) {
       alerts.push({
         type: 'high_calories',
@@ -530,7 +539,11 @@ app.get('/api/admin/alerts', async (req, res) => {
 app.get('/api/admin/mobile/stats', async (req, res) => {
   try {
     const deviceRow = await db.get(`SELECT COUNT(DISTINCT email) as total_devices FROM users WHERE role = 'user'`);
-    const activeRow = await db.get(dateFunc(`SELECT COUNT(DISTINCT user_email) as active_devices FROM scans WHERE scanned_at >= datetime('now', '-24 hours')`));
+    // For PostgreSQL: use CURRENT_TIMESTAMP - INTERVAL; for SQLite: use datetime('now', '-24 hours')
+    const activeQuery = db.isPostgresMode()
+      ? `SELECT COUNT(DISTINCT user_email) as active_devices FROM scans WHERE scanned_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'`
+      : `SELECT COUNT(DISTINCT user_email) as active_devices FROM scans WHERE scanned_at >= datetime('now', '-24 hours')`;
+    const activeRow = await db.get(activeQuery);
 
     res.json({
       app_version: '2.0.0',
@@ -564,22 +577,43 @@ app.get('/api/admin/performance', (req, res) => {
 // User segmentation
 app.get('/api/admin/segments', async (req, res) => {
   try {
-    const activeUsers = await db.all(dateFunc(`SELECT u.email, u.username, u.name, COUNT(s.id) as scan_count, MAX(s.scanned_at) as last_scan
-            FROM users u LEFT JOIN scans s ON u.email = s.user_email
-            WHERE u.role = 'user'
-            GROUP BY u.email, u.username, u.name
-            HAVING last_scan IS NOT NULL AND last_scan >= datetime('now', '-7 days')`));
+    // PostgreSQL doesn't allow aliases in HAVING, so we use subqueries
+    if (db.isPostgresMode()) {
+      const activeUsers = await db.all(`
+        SELECT * FROM (
+          SELECT u.email, u.username, u.name, COUNT(s.id) as scan_count, MAX(s.scanned_at) as last_scan
+          FROM users u LEFT JOIN scans s ON u.email = s.user_email
+          WHERE u.role = 'user'
+          GROUP BY u.email, u.username, u.name
+        ) sub
+        WHERE last_scan IS NOT NULL AND last_scan >= CURRENT_TIMESTAMP - INTERVAL '7 days'`);
 
-    const inactiveUsers = await db.all(dateFunc(`SELECT u.email, u.username, u.name, COUNT(s.id) as scan_count, MAX(s.scanned_at) as last_scan
-            FROM users u LEFT JOIN scans s ON u.email = s.user_email
-            WHERE u.role = 'user'
-            GROUP BY u.email, u.username, u.name
-            HAVING last_scan IS NULL OR last_scan < datetime('now', '-7 days')`));
+      const inactiveUsers = await db.all(`
+        SELECT * FROM (
+          SELECT u.email, u.username, u.name, COUNT(s.id) as scan_count, MAX(s.scanned_at) as last_scan
+          FROM users u LEFT JOIN scans s ON u.email = s.user_email
+          WHERE u.role = 'user'
+          GROUP BY u.email, u.username, u.name
+        ) sub
+        WHERE last_scan IS NULL OR last_scan < CURRENT_TIMESTAMP - INTERVAL '7 days'`);
 
-    res.json({
-      active: activeUsers,
-      inactive: inactiveUsers
-    });
+      res.json({ active: activeUsers, inactive: inactiveUsers });
+    } else {
+      // SQLite - original queries work fine
+      const activeUsers = await db.all(`SELECT u.email, u.username, u.name, COUNT(s.id) as scan_count, MAX(s.scanned_at) as last_scan
+              FROM users u LEFT JOIN scans s ON u.email = s.user_email
+              WHERE u.role = 'user'
+              GROUP BY u.email, u.username, u.name
+              HAVING last_scan IS NOT NULL AND last_scan >= datetime('now', '-7 days')`);
+
+      const inactiveUsers = await db.all(`SELECT u.email, u.username, u.name, COUNT(s.id) as scan_count, MAX(s.scanned_at) as last_scan
+              FROM users u LEFT JOIN scans s ON u.email = s.user_email
+              WHERE u.role = 'user'
+              GROUP BY u.email, u.username, u.name
+              HAVING last_scan IS NULL OR last_scan < datetime('now', '-7 days')`);
+
+      res.json({ active: activeUsers, inactive: inactiveUsers });
+    }
   } catch (err) {
     res.status(500).json({ error: 'Database error' });
   }
