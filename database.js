@@ -7,34 +7,7 @@ const path = require('path');
 
 let db;
 let isPostgres = false;
-
-// Helper to promisify sqlite3 methods
-function sqliteRun(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function(err) {
-      if (err) reject(err);
-      else resolve({ lastID: this.lastID, changes: this.changes });
-    });
-  });
-}
-
-function sqliteGet(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => {
-      if (err) reject(err);
-      else resolve(row);
-    });
-  });
-}
-
-function sqliteAll(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows);
-    });
-  });
-}
+let sqlite3;
 
 // PostgreSQL helpers
 let pgPool;
@@ -157,7 +130,7 @@ async function initialize() {
   } else {
     console.log('DATABASE: Using SQLite (local mode)');
     isPostgres = false;
-    const sqlite3 = require('sqlite3').verbose();
+    sqlite3 = require('sqlite3').verbose();
     db = new sqlite3.Database('./dessert_ai_admin.db');
 
     await new Promise((resolve, reject) => {
@@ -207,6 +180,34 @@ async function initialize() {
     });
 
     console.log('DATABASE: SQLite tables created/verified');
+
+    // Helper to promisify sqlite3 methods (now that sqlite3 is loaded)
+    function sqliteRun(sql, params = []) {
+      return new Promise((resolve, reject) => {
+        db.run(sql, params, function(err) {
+          if (err) reject(err);
+          else resolve({ lastID: this.lastID, changes: this.changes });
+        });
+      });
+    }
+
+    function sqliteGet(sql, params = []) {
+      return new Promise((resolve, reject) => {
+        db.get(sql, params, (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+    }
+
+    function sqliteAll(sql, params = []) {
+      return new Promise((resolve, reject) => {
+        db.all(sql, params, (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        });
+      });
+    }
   }
 }
 
