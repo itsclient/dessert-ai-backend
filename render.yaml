@@ -1,14 +1,17 @@
 services:
   - type: web
-    name: dessert-ai-backend
-    runtime: docker
-    repo: https://github.com/yourusername/dessert-ai
-    branch: main
-    plan: free
-    healthCheckPath: /api/admin/stats
+    name: nutrivision-api
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 3000
-    autoDeploy: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nutrivision-db
+          property: connectionString
+
+databases:
+  - name: nutrivision-db
+    plan: free
