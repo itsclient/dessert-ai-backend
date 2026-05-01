@@ -9,7 +9,6 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
-app.use(express.static(path.join(__dirname, 'frontend')));
 
 // Helper: SQL that works on both SQLite and PostgreSQL
 function dateFunc(expr) {
@@ -648,6 +647,1021 @@ app.get('/api/admin/analytics/advanced', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Database error' });
   }
+});
+
+// === NEW API ENDPOINTS FOR ENHANCED FEATURES ===
+
+// AI Chat Messages
+app.post('/api/ai-chat/messages', async (req, res) => {
+  try {
+    const { userEmail, messageText, senderType } = req.body;
+    
+    await db.run(
+      'INSERT INTO ai_chat_messages (user_email, message_text, sender_type) VALUES (?, ?, ?)',
+      [userEmail, messageText, senderType]
+    );
+    
+    await logActivity(userEmail, 'ai_chat', 'Sent AI chat message');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error saving AI chat message:', error);
+    res.status(500).json({ error: 'Failed to save message' });
+  }
+});
+
+app.get('/api/ai-chat/messages/:userEmail', async (req, res) => {
+  try {
+    const { userEmail } = req.params;
+    const messages = await db.all(
+      'SELECT * FROM ai_chat_messages WHERE user_email = ? ORDER BY timestamp DESC LIMIT 50',
+      [userEmail]
+    );
+    res.json(messages);
+  } catch (error) {
+    console.error('Error fetching AI chat messages:', error);
+    res.status(500).json({ error: 'Failed to fetch messages' });
+  }
+});
+
+app.get('/api/ai-chat/messages/all', async (req, res) => {
+  try {
+    const messages = await db.all(
+      'SELECT * FROM ai_chat_messages ORDER BY timestamp DESC LIMIT 100'
+    );
+    res.json(messages);
+  } catch (error) {
+    console.error('Error fetching all AI chat messages:', error);
+    res.status(500).json({ error: 'Failed to fetch messages' });
+  }
+});
+
+// Group Challenges
+app.post('/api/challenges', async (req, res) => {
+  try {
+    const { name, description, challengeType, difficulty, startDate, endDate, maxParticipants, prizePool, requirements, rewards, createdBy } = req.body;
+    
+    const result = await db.run(
+      'INSERT INTO group_challenges (name, description, challenge_type, difficulty, start_date, end_date, max_participants, prize_pool, requirements, rewards, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [name, description, challengeType, difficulty, startDate, endDate, maxParticipants, prizePool, JSON.stringify(requirements), JSON.stringify(rewards), createdBy]
+    );
+    
+    await logActivity(createdBy, 'challenge_created', `Created challenge: ${name}`);
+    res.json({ success: true, challengeId: result.lastID });
+  } catch (error) {
+    console.error('Error creating challenge:', error);
+    res.status(500).json({ error: 'Failed to create challenge' });
+  }
+});
+
+app.get('/api/challenges', async (req, res) => {
+  try {
+    const challenges = await db.all('SELECT * FROM group_challenges WHERE is_active = 1 ORDER BY created_at DESC');
+    res.json(challenges);
+  } catch (error) {
+    console.error('Error fetching challenges:', error);
+    res.status(500).json({ error: 'Failed to fetch challenges' });
+  }
+});
+
+app.post('/api/challenges/:challengeId/join', async (req, res) => {
+  try {
+    const { challengeId } = req.params;
+    const { userEmail } = req.body;
+    
+    // Check if already joined
+    const existing = await db.get(
+      'SELECT * FROM challenge_participants WHERE challenge_id = ? AND user_email = ?',
+      [challengeId, userEmail]
+    );
+    
+    if (existing) {
+      return res.status(400).json({ error: 'Already joined challenge' });
+    }
+    
+    await db.run(
+      'INSERT INTO challenge_participants (challenge_id, user_email) VALUES (?, ?)',
+      [challengeId, userEmail]
+    );
+    
+    // Update participant count
+    await db.run(
+      'UPDATE group_challenges SET current_participants = current_participants + 1 WHERE id = ?',
+      [challengeId]
+    );
+    
+    await logActivity(userEmail, 'challenge_joined', `Joined challenge ${challengeId}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error joining challenge:', error);
+    res.status(500).json({ error: 'Failed to join challenge' });
+  }
+});
+
+// Smart Camera Scans
+app.post('/api/smart-camera/scans', async (req, res) => {
+  try {
+    const { userEmail, foodName, confidence, calories, protein, carbs, fat, fiber, sugar, sodium, servingSize, scanSource } = req.body;
+    
+    await db.run(
+      'INSERT INTO smart_camera_scans (user_email, food_name, confidence, calories, protein_grams, carbs_grams, fat_grams, fiber_grams, sugar_grams, sodium, serving_size, scan_source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [userEmail, foodName, confidence, calories, protein, carbs, fat, fiber, sugar, sodium, servingSize, scanSource]
+    );
+    
+    await logActivity(userEmail, 'smart_camera_scan', `Scanned food: ${foodName}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error saving smart camera scan:', error);
+    res.status(500).json({ error: 'Failed to save scan' });
+  }
+});
+
+app.get('/api/smart-camera/scans/:userEmail', async (req, res) => {
+  try {
+    const { userEmail } = req.params;
+    const scans = await db.all(
+      'SELECT * FROM smart_camera_scans WHERE user_email = ? ORDER BY timestamp DESC LIMIT 50',
+      [userEmail]
+    );
+    res.json(scans);
+  } catch (error) {
+    console.error('Error fetching smart camera scans:', error);
+    res.status(500).json({ error: 'Failed to fetch scans' });
+  }
+});
+
+app.get('/api/smart-camera/scans/all', async (req, res) => {
+  try {
+    const scans = await db.all(
+      'SELECT * FROM smart_camera_scans ORDER BY timestamp DESC LIMIT 100'
+    );
+    res.json(scans);
+  } catch (error) {
+    console.error('Error fetching all smart camera scans:', error);
+    res.status(500).json({ error: 'Failed to fetch scans' });
+  }
+});
+
+// Allergy Scans
+app.post('/api/allergy-scans', async (req, res) => {
+  try {
+    const { userEmail, barcode, productName, detectedAllergens, dietaryViolations, isSafe, recommendations } = req.body;
+    
+    await db.run(
+      'INSERT INTO allergy_scans (user_email, barcode, product_name, detected_allergens, dietary_violations, is_safe, recommendations) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [userEmail, barcode, productName, JSON.stringify(detectedAllergens), JSON.stringify(dietaryViolations), isSafe, JSON.stringify(recommendations)]
+    );
+    
+    await logActivity(userEmail, 'allergy_scan', `Scanned product: ${productName}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error saving allergy scan:', error);
+    res.status(500).json({ error: 'Failed to save scan' });
+  }
+});
+
+app.get('/api/allergy-scans/:userEmail', async (req, res) => {
+  try {
+    const { userEmail } = req.params;
+    const scans = await db.all(
+      'SELECT * FROM allergy_scans WHERE user_email = ? ORDER BY timestamp DESC LIMIT 50',
+      [userEmail]
+    );
+    res.json(scans);
+  } catch (error) {
+    console.error('Error fetching allergy scans:', error);
+    res.status(500).json({ error: 'Failed to fetch scans' });
+  }
+});
+
+app.get('/api/allergy-scans/all', async (req, res) => {
+  try {
+    const scans = await db.all(
+      'SELECT * FROM allergy_scans ORDER BY timestamp DESC LIMIT 100'
+    );
+    res.json(scans);
+  } catch (error) {
+    console.error('Error fetching all allergy scans:', error);
+    res.status(500).json({ error: 'Failed to fetch scans' });
+  }
+});
+
+// User Goals
+app.post('/api/goals', async (req, res) => {
+  try {
+    const { userEmail, goalType, targetValue, unit, deadline } = req.body;
+    
+    await db.run(
+      'INSERT INTO user_goals (user_email, goal_type, target_value, unit, deadline) VALUES (?, ?, ?, ?, ?)',
+      [userEmail, goalType, targetValue, unit, deadline]
+    );
+    
+    await logActivity(userEmail, 'goal_created', `Created ${goalType} goal`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error creating goal:', error);
+    res.status(500).json({ error: 'Failed to create goal' });
+  }
+});
+
+app.get('/api/goals/:userEmail', async (req, res) => {
+  try {
+    const { userEmail } = req.params;
+    const goals = await db.all(
+      'SELECT * FROM user_goals WHERE user_email = ? ORDER BY created_at DESC',
+      [userEmail]
+    );
+    res.json(goals);
+  } catch (error) {
+    console.error('Error fetching goals:', error);
+    res.status(500).json({ error: 'Failed to fetch goals' });
+  }
+});
+
+app.get('/api/goals/all', async (req, res) => {
+  try {
+    const goals = await db.all(
+      'SELECT * FROM user_goals ORDER BY created_at DESC LIMIT 100'
+    );
+    res.json(goals);
+  } catch (error) {
+    console.error('Error fetching all goals:', error);
+    res.status(500).json({ error: 'Failed to fetch goals' });
+  }
+});
+
+app.put('/api/goals/:goalId', async (req, res) => {
+  try {
+    const { goalId } = req.params;
+    const { currentValue, isCompleted } = req.body;
+    
+    await db.run(
+      'UPDATE user_goals SET current_value = ?, is_completed = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [currentValue, isCompleted, goalId]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating goal:', error);
+    res.status(500).json({ error: 'Failed to update goal' });
+  }
+});
+
+// User Achievements
+app.post('/api/achievements', async (req, res) => {
+  try {
+    const { userEmail, achievementType, achievementName, pointsAwarded } = req.body;
+    
+    await db.run(
+      'INSERT INTO user_achievements (user_email, achievement_type, achievement_name, points_awarded) VALUES (?, ?, ?, ?)',
+      [userEmail, achievementType, achievementName, pointsAwarded]
+    );
+    
+    await logActivity(userEmail, 'achievement_earned', `Earned: ${achievementName}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error saving achievement:', error);
+    res.status(500).json({ error: 'Failed to save achievement' });
+  }
+});
+
+app.get('/api/achievements/:userEmail', async (req, res) => {
+  try {
+    const { userEmail } = req.params;
+    const achievements = await db.all(
+      'SELECT * FROM user_achievements WHERE user_email = ? ORDER BY earned_at DESC',
+      [userEmail]
+    );
+    res.json(achievements);
+  } catch (error) {
+    console.error('Error fetching achievements:', error);
+    res.status(500).json({ error: 'Failed to fetch achievements' });
+  }
+});
+
+app.get('/api/achievements/all', async (req, res) => {
+  try {
+    const achievements = await db.all(
+      'SELECT * FROM user_achievements ORDER BY earned_at DESC LIMIT 100'
+    );
+    res.json(achievements);
+  } catch (error) {
+    console.error('Error fetching all achievements:', error);
+    res.status(500).json({ error: 'Failed to fetch achievements' });
+  }
+});
+
+// Metabolic Profiles
+app.post('/api/metabolic-profiles', async (req, res) => {
+  try {
+    const { userEmail, age, gender, heightCm, weightKg, activityLevel, bmr, tdee, targetCalories, proteinGrams, carbGrams, fatGrams, goal } = req.body;
+    
+    // Check if profile exists
+    const existing = await db.get(
+      'SELECT * FROM metabolic_profiles WHERE user_email = ?',
+      [userEmail]
+    );
+    
+    if (existing) {
+      await db.run(
+        'UPDATE metabolic_profiles SET age = ?, gender = ?, height_cm = ?, weight_kg = ?, activity_level = ?, bmr = ?, tdee = ?, target_calories = ?, protein_grams = ?, carb_grams = ?, fat_grams = ?, goal = ?, updated_at = CURRENT_TIMESTAMP WHERE user_email = ?',
+        [age, gender, heightCm, weightKg, activityLevel, bmr, tdee, targetCalories, proteinGrams, carbGrams, fatGrams, goal, userEmail]
+      );
+    } else {
+      await db.run(
+        'INSERT INTO metabolic_profiles (user_email, age, gender, height_cm, weight_kg, activity_level, bmr, tdee, target_calories, protein_grams, carb_grams, fat_grams, goal) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [userEmail, age, gender, heightCm, weightKg, activityLevel, bmr, tdee, targetCalories, proteinGrams, carbGrams, fatGrams, goal]
+      );
+    }
+    
+    await logActivity(userEmail, 'metabolic_profile_updated', 'Updated metabolic profile');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error saving metabolic profile:', error);
+    res.status(500).json({ error: 'Failed to save profile' });
+  }
+});
+
+app.get('/api/metabolic-profiles/:userEmail', async (req, res) => {
+  try {
+    const { userEmail } = req.params;
+    const profile = await db.get(
+      'SELECT * FROM metabolic_profiles WHERE user_email = ?',
+      [userEmail]
+    );
+    res.json(profile);
+  } catch (error) {
+    console.error('Error fetching metabolic profile:', error);
+    res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+});
+
+// Recipe Saves
+app.post('/api/recipe-saves', async (req, res) => {
+  try {
+    const { userEmail, recipeName, recipeData } = req.body;
+    
+    await db.run(
+      'INSERT INTO recipe_saves (user_email, recipe_name, recipe_data) VALUES (?, ?, ?)',
+      [userEmail, recipeName, JSON.stringify(recipeData)]
+    );
+    
+    await logActivity(userEmail, 'recipe_saved', `Saved recipe: ${recipeName}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error saving recipe:', error);
+    res.status(500).json({ error: 'Failed to save recipe' });
+  }
+});
+
+app.get('/api/recipe-saves/:userEmail', async (req, res) => {
+  try {
+    const { userEmail } = req.params;
+    const recipes = await db.all(
+      'SELECT * FROM recipe_saves WHERE user_email = ? ORDER BY saved_at DESC',
+      [userEmail]
+    );
+    res.json(recipes);
+  } catch (error) {
+    console.error('Error fetching saved recipes:', error);
+    res.status(500).json({ error: 'Failed to fetch recipes' });
+  }
+});
+
+// Enhanced Analytics for Admin
+app.get('/api/analytics/overview', async (req, res) => {
+  try {
+    // Get comprehensive analytics
+    const totalUsers = await db.get('SELECT COUNT(*) as count FROM users');
+    const totalScans = await db.get('SELECT COUNT(*) as count FROM scans');
+    const smartCameraScans = await db.get('SELECT COUNT(*) as count FROM smart_camera_scans');
+    const allergyScans = await db.get('SELECT COUNT(*) as count FROM allergy_scans');
+    const aiChatMessages = await db.get('SELECT COUNT(*) as count FROM ai_chat_messages');
+    const activeChallenges = await db.get('SELECT COUNT(*) as count FROM group_challenges WHERE is_active = 1');
+    const totalGoals = await db.get('SELECT COUNT(*) as count FROM user_goals');
+    const completedGoals = await db.get('SELECT COUNT(*) as count FROM user_goals WHERE is_completed = 1');
+    
+    res.json({
+      totalUsers: totalUsers.count,
+      totalScans: totalScans.count,
+      smartCameraScans: smartCameraScans.count,
+      allergyScans: allergyScans.count,
+      aiChatMessages: aiChatMessages.count,
+      activeChallenges: activeChallenges.count,
+      totalGoals: totalGoals.count,
+      completedGoals: completedGoals.count,
+      goalCompletionRate: totalGoals.count > 0 ? (completedGoals.count / totalGoals.count * 100).toFixed(2) : 0
+    });
+  } catch (error) {
+    console.error('Error fetching analytics overview:', error);
+    res.status(500).json({ error: 'Failed to fetch analytics' });
+  }
+});
+
+// Recent Activities for Real-time Dashboard
+app.get('/api/activities/recent', async (req, res) => {
+  try {
+    // Get recent activities from all tables
+    const recentActivities = [];
+    
+    // Get recent AI chat messages
+    const chatMessages = await db.all(
+      'SELECT user_email, "ai_chat" as activity_type, "Sent AI chat message" as description, timestamp as created_at FROM ai_chat_messages ORDER BY timestamp DESC LIMIT 5'
+    );
+    recentActivities.push(...chatMessages);
+    
+    // Get recent smart camera scans
+    const cameraScans = await db.all(
+      'SELECT user_email, "smart_camera_scan" as activity_type, "Scanned food: " || food_name as description, timestamp as created_at FROM smart_camera_scans ORDER BY timestamp DESC LIMIT 5'
+    );
+    recentActivities.push(...cameraScans);
+    
+    // Get recent allergy scans
+    const allergyScans = await db.all(
+      'SELECT user_email, "allergy_scan" as activity_type, "Scanned product: " || product_name as description, timestamp as created_at FROM allergy_scans ORDER BY timestamp DESC LIMIT 5'
+    );
+    recentActivities.push(...allergyScans);
+    
+    // Get recent goal activities
+    const goalActivities = await db.all(
+      'SELECT user_email, CASE WHEN is_completed = 1 THEN "goal_completed" ELSE "goal_created" END as activity_type, CASE WHEN is_completed = 1 THEN "Completed goal: " || goal_type ELSE "Created goal: " || goal_type END as description, created_at FROM user_goals ORDER BY created_at DESC LIMIT 5'
+    );
+    recentActivities.push(...goalActivities);
+    
+    // Get recent achievements
+    const achievements = await db.all(
+      'SELECT user_email, "achievement_earned" as activity_type, "Earned: " || achievement_name as description, earned_at as created_at FROM user_achievements ORDER BY earned_at DESC LIMIT 5'
+    );
+    recentActivities.push(...achievements);
+    
+    // Get recent challenge activities
+    const challengeActivities = await db.all(
+      'SELECT user_email, "challenge_joined" as activity_type, "Joined challenge" as description, joined_at as created_at FROM challenge_participants ORDER BY joined_at DESC LIMIT 5'
+    );
+    recentActivities.push(...challengeActivities);
+    
+    // Get recent regular scans
+    const regularScans = await db.all(
+      'SELECT user_email, "scan" as activity_type, "Scanned: " || dessert_name as description, scanned_at as created_at FROM scans ORDER BY scanned_at DESC LIMIT 5'
+    );
+    recentActivities.push(...regularScans);
+    
+    // Sort all activities by timestamp and limit to 20
+    const sortedActivities = recentActivities
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 20);
+    
+    res.json(sortedActivities);
+  } catch (error) {
+    console.error('Error fetching recent activities:', error);
+    res.status(500).json({ error: 'Failed to fetch activities' });
+  }
+});
+
+app.get('/api/analytics/user-activity/:userEmail', async (req, res) => {
+  try {
+    const { userEmail } = req.params;
+    
+    // Get user's activity across all features
+    const recentScans = await db.all(
+      'SELECT * FROM scans WHERE user_email = ? ORDER BY scanned_at DESC LIMIT 10',
+      [userEmail]
+    );
+    const smartCameraScans = await db.all(
+      'SELECT * FROM smart_camera_scans WHERE user_email = ? ORDER BY timestamp DESC LIMIT 10',
+      [userEmail]
+    );
+    const allergyScans = await db.all(
+      'SELECT * FROM allergy_scans WHERE user_email = ? ORDER BY timestamp DESC LIMIT 10',
+      [userEmail]
+    );
+    const aiChatMessages = await db.all(
+      'SELECT * FROM ai_chat_messages WHERE user_email = ? ORDER BY timestamp DESC LIMIT 10',
+      [userEmail]
+    );
+    const goals = await db.all(
+      'SELECT * FROM user_goals WHERE user_email = ? ORDER BY created_at DESC',
+      [userEmail]
+    );
+    const achievements = await db.all(
+      'SELECT * FROM user_achievements WHERE user_email = ? ORDER BY earned_at DESC LIMIT 10',
+      [userEmail]
+    );
+    
+    res.json({
+      recentScans,
+      smartCameraScans,
+      allergyScans,
+      aiChatMessages,
+      goals,
+      achievements
+    });
+  } catch (error) {
+    console.error('Error fetching user activity:', error);
+    res.status(500).json({ error: 'Failed to fetch user activity' });
+  }
+});
+
+// ========== ADVANCED ADMIN FEATURES API (12 Improvements) ==========
+
+// 1. User Journey Funnel Analytics
+app.get('/api/analytics/funnel', async (req, res) => {
+  try {
+    // Get counts for each stage of user journey
+    const totalSignups = await db.get('SELECT COUNT(*) as count FROM users');
+    const firstScan = await db.get('SELECT COUNT(DISTINCT user_email) as count FROM scans');
+    const goalSet = await db.get('SELECT COUNT(DISTINCT user_email) as count FROM user_goals');
+    const challengeJoined = await db.get('SELECT COUNT(DISTINCT user_email) as count FROM challenge_participants');
+    const achievementEarned = await db.get('SELECT COUNT(DISTINCT user_email) as count FROM user_achievements');
+    
+    // Calculate conversion rates
+    const funnel = {
+      stages: [
+        { name: 'Sign Up', count: totalSignups.count, conversionRate: 100 },
+        { name: 'First Scan', count: firstScan.count, conversionRate: totalSignups.count > 0 ? ((firstScan.count / totalSignups.count) * 100).toFixed(2) : 0 },
+        { name: 'Goal Set', count: goalSet.count, conversionRate: firstScan.count > 0 ? ((goalSet.count / firstScan.count) * 100).toFixed(2) : 0 },
+        { name: 'Challenge Joined', count: challengeJoined.count, conversionRate: goalSet.count > 0 ? ((challengeJoined.count / goalSet.count) * 100).toFixed(2) : 0 },
+        { name: 'Achievement Earned', count: achievementEarned.count, conversionRate: challengeJoined.count > 0 ? ((achievementEarned.count / challengeJoined.count) * 100).toFixed(2) : 0 }
+      ]
+    };
+    
+    res.json(funnel);
+  } catch (error) {
+    console.error('Error fetching funnel analytics:', error);
+    res.status(500).json({ error: 'Failed to fetch funnel data' });
+  }
+});
+
+// 2. User Retention Heatmap Data
+app.get('/api/analytics/retention-heatmap', async (req, res) => {
+  try {
+    const days = req.query.days || 30;
+    
+    // Get daily active users for the past X days
+    const heatmapData = await db.all(`
+      SELECT 
+        DATE(created_at) as date,
+        COUNT(DISTINCT user_email) as active_users,
+        SUM(activity_count) as total_activities
+      FROM daily_active_users
+      WHERE active_date >= DATE('now', '-${days} days')
+      GROUP BY DATE(created_at)
+      ORDER BY date DESC
+    `);
+    
+    res.json(heatmapData);
+  } catch (error) {
+    console.error('Error fetching retention heatmap:', error);
+    res.status(500).json({ error: 'Failed to fetch heatmap data' });
+  }
+});
+
+// 3. Real-time Online Users
+app.get('/api/analytics/online-users', async (req, res) => {
+  try {
+    // Clean up old sessions (inactive for > 5 minutes)
+    await db.run(`
+      DELETE FROM online_users 
+      WHERE last_activity < datetime('now', '-5 minutes')
+    `);
+    
+    // Get current online users count
+    const onlineCount = await db.get('SELECT COUNT(DISTINCT user_email) as count FROM online_users');
+    const totalSessions = await db.get('SELECT COUNT(*) as count FROM online_users');
+    
+    res.json({
+      onlineUsers: onlineCount.count,
+      activeSessions: totalSessions.count,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error fetching online users:', error);
+    res.status(500).json({ error: 'Failed to fetch online users' });
+  }
+});
+
+// Heartbeat endpoint for online users tracking
+app.post('/api/heartbeat', async (req, res) => {
+  try {
+    const { userEmail, sessionId } = req.body;
+    
+    // Upsert online user record
+    await db.run(`
+      INSERT INTO online_users (user_email, session_id, last_activity, ip_address)
+      VALUES (?, ?, CURRENT_TIMESTAMP, ?)
+      ON CONFLICT(user_email, session_id) 
+      DO UPDATE SET last_activity = CURRENT_TIMESTAMP
+    `, [userEmail, sessionId, req.ip]);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating heartbeat:', error);
+    res.status(500).json({ error: 'Failed to update heartbeat' });
+  }
+});
+
+// 4. Smart Alerts System
+app.get('/api/alerts/rules', async (req, res) => {
+  try {
+    const rules = await db.all('SELECT * FROM alert_rules WHERE is_active = 1');
+    res.json(rules);
+  } catch (error) {
+    console.error('Error fetching alert rules:', error);
+    res.status(500).json({ error: 'Failed to fetch alert rules' });
+  }
+});
+
+app.post('/api/alerts/rules', async (req, res) => {
+  try {
+    const { alertName, alertType, thresholdValue, comparisonOperator, emailNotifications } = req.body;
+    
+    const result = await db.run(`
+      INSERT INTO alert_rules (alert_name, alert_type, threshold_value, comparison_operator, email_notifications)
+      VALUES (?, ?, ?, ?, ?)
+    `, [alertName, alertType, thresholdValue, comparisonOperator, emailNotifications]);
+    
+    res.json({ success: true, ruleId: result.lastID });
+  } catch (error) {
+    console.error('Error creating alert rule:', error);
+    res.status(500).json({ error: 'Failed to create alert rule' });
+  }
+});
+
+app.get('/api/alerts/history', async (req, res) => {
+  try {
+    const alerts = await db.all(`
+      SELECT ah.*, ar.alert_name, ar.alert_type
+      FROM alert_history ah
+      JOIN alert_rules ar ON ah.alert_rule_id = ar.id
+      ORDER BY ah.triggered_at DESC
+      LIMIT 50
+    `);
+    res.json(alerts);
+  } catch (error) {
+    console.error('Error fetching alert history:', error);
+    res.status(500).json({ error: 'Failed to fetch alert history' });
+  }
+});
+
+// 5. Scheduled Reports
+app.get('/api/reports/scheduled', async (req, res) => {
+  try {
+    const reports = await db.all('SELECT * FROM scheduled_reports ORDER BY created_at DESC');
+    res.json(reports);
+  } catch (error) {
+    console.error('Error fetching scheduled reports:', error);
+    res.status(500).json({ error: 'Failed to fetch reports' });
+  }
+});
+
+app.post('/api/reports/scheduled', async (req, res) => {
+  try {
+    const { reportName, frequency, emailRecipients } = req.body;
+    
+    const result = await db.run(`
+      INSERT INTO scheduled_reports (report_name, frequency, email_recipients)
+      VALUES (?, ?, ?)
+    `, [reportName, frequency, emailRecipients]);
+    
+    res.json({ success: true, reportId: result.lastID });
+  } catch (error) {
+    console.error('Error creating scheduled report:', error);
+    res.status(500).json({ error: 'Failed to create report' });
+  }
+});
+
+// 6. Bulk Operations
+app.post('/api/bulk/announcement', async (req, res) => {
+  try {
+    const { userEmails, message, title } = req.body;
+    
+    // In a real app, this would send notifications/emails
+    // For now, log the bulk action
+    await Promise.all(userEmails.map(email => 
+      logActivity(email, 'bulk_announcement', `Received announcement: ${title}`)
+    ));
+    
+    res.json({ success: true, recipientsCount: userEmails.length });
+  } catch (error) {
+    console.error('Error sending bulk announcement:', error);
+    res.status(500).json({ error: 'Failed to send announcement' });
+  }
+});
+
+app.post('/api/bulk/achievement', async (req, res) => {
+  try {
+    const { userEmails, achievementName, achievementType, points } = req.body;
+    
+    await Promise.all(userEmails.map(email => 
+      db.run(`
+        INSERT INTO user_achievements (user_email, achievement_type, achievement_name, points_awarded)
+        VALUES (?, ?, ?, ?)
+      `, [email, achievementType, achievementName, points])
+    ));
+    
+    res.json({ success: true, recipientsCount: userEmails.length });
+  } catch (error) {
+    console.error('Error awarding bulk achievements:', error);
+    res.status(500).json({ error: 'Failed to award achievements' });
+  }
+});
+
+app.post('/api/bulk/export', async (req, res) => {
+  try {
+    const { userEmails } = req.body;
+    
+    // Get full user data for selected users
+    const users = await db.all(`
+      SELECT u.*, 
+        (SELECT COUNT(*) FROM scans WHERE user_email = u.email) as scan_count,
+        (SELECT COUNT(*) FROM user_goals WHERE user_email = u.email) as goal_count,
+        (SELECT COUNT(*) FROM user_achievements WHERE user_email = u.email) as achievement_count
+      FROM users u
+      WHERE u.email IN (${userEmails.map(() => '?').join(',')})
+    `, userEmails);
+    
+    res.json({ success: true, data: users });
+  } catch (error) {
+    console.error('Error exporting user data:', error);
+    res.status(500).json({ error: 'Failed to export data' });
+  }
+});
+
+// 7. Content Management System (CMS)
+app.get('/api/cms/content', async (req, res) => {
+  try {
+    const { type } = req.query;
+    let sql = 'SELECT * FROM cms_content WHERE is_active = 1';
+    const params = [];
+    
+    if (type) {
+      sql += ' AND content_type = ?';
+      params.push(type);
+    }
+    
+    sql += ' ORDER BY created_at DESC';
+    
+    const content = await db.all(sql, params);
+    res.json(content);
+  } catch (error) {
+    console.error('Error fetching CMS content:', error);
+    res.status(500).json({ error: 'Failed to fetch content' });
+  }
+});
+
+app.post('/api/cms/content', async (req, res) => {
+  try {
+    const { contentType, title, content, metadata, createdBy } = req.body;
+    
+    const result = await db.run(`
+      INSERT INTO cms_content (content_type, title, content, metadata, created_by)
+      VALUES (?, ?, ?, ?, ?)
+    `, [contentType, title, content, JSON.stringify(metadata), createdBy]);
+    
+    res.json({ success: true, contentId: result.lastID });
+  } catch (error) {
+    console.error('Error creating CMS content:', error);
+    res.status(500).json({ error: 'Failed to create content' });
+  }
+});
+
+app.put('/api/cms/content/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, content, metadata, updatedBy } = req.body;
+    
+    await db.run(`
+      UPDATE cms_content 
+      SET title = ?, content = ?, metadata = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `, [title, content, JSON.stringify(metadata), updatedBy, id]);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating CMS content:', error);
+    res.status(500).json({ error: 'Failed to update content' });
+  }
+});
+
+// 8. User Impersonation
+app.post('/api/admin/impersonate', async (req, res) => {
+  try {
+    const { adminEmail, targetUserEmail, action } = req.body;
+    
+    // Log impersonation action
+    await db.run(`
+      INSERT INTO user_impersonation_logs (admin_email, target_user_email, action, ip_address)
+      VALUES (?, ?, ?, ?)
+    `, [adminEmail, targetUserEmail, action, req.ip]);
+    
+    // Get target user data for impersonation
+    const targetUser = await db.get('SELECT * FROM users WHERE email = ?', [targetUserEmail]);
+    
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json({ 
+      success: true, 
+      user: {
+        email: targetUser.email,
+        name: targetUser.name,
+        username: targetUser.username,
+        role: targetUser.role
+      }
+    });
+  } catch (error) {
+    console.error('Error impersonating user:', error);
+    res.status(500).json({ error: 'Failed to impersonate user' });
+  }
+});
+
+app.get('/api/admin/impersonation-logs', async (req, res) => {
+  try {
+    const logs = await db.all(`
+      SELECT * FROM user_impersonation_logs
+      ORDER BY created_at DESC
+      LIMIT 50
+    `);
+    res.json(logs);
+  } catch (error) {
+    console.error('Error fetching impersonation logs:', error);
+    res.status(500).json({ error: 'Failed to fetch logs' });
+  }
+});
+
+// 9. A/B Testing
+app.get('/api/ab-tests', async (req, res) => {
+  try {
+    const tests = await db.all('SELECT * FROM ab_tests ORDER BY created_at DESC');
+    res.json(tests);
+  } catch (error) {
+    console.error('Error fetching A/B tests:', error);
+    res.status(500).json({ error: 'Failed to fetch tests' });
+  }
+});
+
+app.post('/api/ab-tests', async (req, res) => {
+  try {
+    const { testName, variantAName, variantBName, startDate, endDate } = req.body;
+    
+    const result = await db.run(`
+      INSERT INTO ab_tests (test_name, variant_a_name, variant_b_name, start_date, end_date)
+      VALUES (?, ?, ?, ?, ?)
+    `, [testName, variantAName, variantBName, startDate, endDate]);
+    
+    res.json({ success: true, testId: result.lastID });
+  } catch (error) {
+    console.error('Error creating A/B test:', error);
+    res.status(500).json({ error: 'Failed to create test' });
+  }
+});
+
+app.get('/api/ab-tests/:id/results', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get variant distribution
+    const variantStats = await db.all(`
+      SELECT 
+        variant,
+        COUNT(*) as total_users,
+        SUM(CASE WHEN converted = 1 THEN 1 ELSE 0 END) as conversions,
+        (SUM(CASE WHEN converted = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as conversion_rate
+      FROM ab_test_results
+      WHERE test_id = ?
+      GROUP BY variant
+    `, [id]);
+    
+    res.json({ testId: id, variants: variantStats });
+  } catch (error) {
+    console.error('Error fetching A/B test results:', error);
+    res.status(500).json({ error: 'Failed to fetch results' });
+  }
+});
+
+// 10. Revenue Tracking
+app.get('/api/revenue/overview', async (req, res) => {
+  try {
+    const totalRevenue = await db.get('SELECT SUM(amount) as total FROM revenue_tracking');
+    const monthlyRevenue = await db.all(`
+      SELECT 
+        strftime('%Y-%m', transaction_date) as month,
+        SUM(amount) as revenue,
+        COUNT(*) as transactions
+      FROM revenue_tracking
+      GROUP BY strftime('%Y-%m', transaction_date)
+      ORDER BY month DESC
+      LIMIT 12
+    `);
+    
+    res.json({
+      totalRevenue: totalRevenue.total || 0,
+      monthlyBreakdown: monthlyRevenue
+    });
+  } catch (error) {
+    console.error('Error fetching revenue data:', error);
+    res.status(500).json({ error: 'Failed to fetch revenue' });
+  }
+});
+
+app.post('/api/revenue/track', async (req, res) => {
+  try {
+    const { userEmail, transactionType, amount, currency, description } = req.body;
+    
+    const result = await db.run(`
+      INSERT INTO revenue_tracking (user_email, transaction_type, amount, currency, description)
+      VALUES (?, ?, ?, ?, ?)
+    `, [userEmail, transactionType, amount, currency, description]);
+    
+    res.json({ success: true, transactionId: result.lastID });
+  } catch (error) {
+    console.error('Error tracking revenue:', error);
+    res.status(500).json({ error: 'Failed to track revenue' });
+  }
+});
+
+// 11. Integration Health Monitoring
+app.get('/api/integrations/health', async (req, res) => {
+  try {
+    const services = await db.all('SELECT * FROM integration_health ORDER BY last_checked DESC');
+    
+    // Calculate overall health score
+    const criticalServices = services.filter(s => s.is_critical);
+    const healthyCritical = criticalServices.filter(s => s.status === 'healthy').length;
+    const healthScore = criticalServices.length > 0 
+      ? (healthyCritical / criticalServices.length) * 100 
+      : 100;
+    
+    res.json({
+      overallHealth: healthScore.toFixed(2),
+      services: services
+    });
+  } catch (error) {
+    console.error('Error fetching integration health:', error);
+    res.status(500).json({ error: 'Failed to fetch health status' });
+  }
+});
+
+app.post('/api/integrations/health-check', async (req, res) => {
+  try {
+    const { serviceName, serviceType, status, responseTimeMs, errorMessage, isCritical } = req.body;
+    
+    await db.run(`
+      INSERT INTO integration_health (service_name, service_type, status, response_time_ms, error_message, is_critical)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(service_name) 
+      DO UPDATE SET 
+        status = ?,
+        response_time_ms = ?,
+        error_message = ?,
+        last_checked = CURRENT_TIMESTAMP
+    `, [serviceName, serviceType, status, responseTimeMs, errorMessage, isCritical, status, responseTimeMs, errorMessage]);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating health check:', error);
+    res.status(500).json({ error: 'Failed to update health check' });
+  }
+});
+
+// 12. Export Scheduler
+app.get('/api/exports/schedules', async (req, res) => {
+  try {
+    const schedules = await db.all('SELECT * FROM export_schedules ORDER BY created_at DESC');
+    res.json(schedules);
+  } catch (error) {
+    console.error('Error fetching export schedules:', error);
+    res.status(500).json({ error: 'Failed to fetch schedules' });
+  }
+});
+
+app.post('/api/exports/schedules', async (req, res) => {
+  try {
+    const { exportName, exportType, frequency, destination, emailRecipients } = req.body;
+    
+    const result = await db.run(`
+      INSERT INTO export_schedules (export_name, export_type, frequency, destination, email_recipients)
+      VALUES (?, ?, ?, ?, ?)
+    `, [exportName, exportType, frequency, destination, emailRecipients]);
+    
+    res.json({ success: true, scheduleId: result.lastID });
+  } catch (error) {
+    console.error('Error creating export schedule:', error);
+    res.status(500).json({ error: 'Failed to create schedule' });
+  }
+});
+
+// Serve static files (MUST be at the end after all API routes)
+app.use(express.static(path.join(__dirname, '..', 'frontend')));
+
+// Handle the /admin route explicitly
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'frontend', 'index.html'));
+});
+
+// Catch-all for admin sub-routes (SPA support)
+app.get('/admin/*', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'frontend', 'index.html'));
 });
 
 // Initialize database then start server
